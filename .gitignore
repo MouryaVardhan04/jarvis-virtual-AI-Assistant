@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+envjarvis/
+.DS_Store
