@@ -46,7 +46,7 @@ $(document).ready(function () {
         eel.playAssistantSound()
         $("#Oval").attr("hidden", true);
         $("#SiriWave").attr("hidden", false);
-        eel.allCommands()()
+        eel.takecommand()()
     });
 
 
@@ -57,7 +57,7 @@ $(document).ready(function () {
             eel.playAssistantSound()
             $("#Oval").attr("hidden", true);
             $("#SiriWave").attr("hidden", false);
-            eel.allCommands()()
+            eel.takecommand()()
         }
     }
     document.addEventListener('keyup', doc_keyUp, false);

@@ -1,12 +1,13 @@
-import os
 import eel
 
-from engine.features import *
+from engine.features import *  # If needed
+from engine.command import *   # takecommand is exposed here
 
-eel.init("www")
+# Initialize Eel with the folder that contains index.html
+eel.init("www")  # Make sure "www/index.html" exists
 
+# Optional startup action
 playAssistantSound()
 
-os.system('open index.html')  # correct for macOS
-
-eel.start("index.html", mode="default", host="localhost", block=True)
+# Start the Eel frontend and keep it running
+eel.start("index.html", size=(1000, 700), block=True)

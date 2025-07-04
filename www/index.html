@@ -115,8 +115,8 @@
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 
     <script src="main.js"></script>
-    <script src="controller.js"></script>
     <script src="/eel.js"></script>
+    <script src="controller.js"></script>
 
 
     <script>
@@ -138,6 +138,7 @@
       if (typeof eel !== "undefined" && typeof eel.playAssistantSound === "function") {
         eel.playAssistantSound();
       }
+      eel.allCommands()()
   
       // 👁️ UI changes
       $("#Oval").hide();
