@@ -2,17 +2,18 @@ import pygame
 import os
 import eel
 import re 
-# NOTE: Assuming ASSISTANT_NAME is defined in engine.config
+# NOTE: Assuming ASSISTANT_NAME is defined in engine.config, using placeholder for completeness
 # from engine.config import ASSISTANT_NAME 
 ASSISTANT_NAME = "jarvis" # Placeholder in case config is missing
-from engine.command import speak
+
+# 🌟 CRITICAL FIX: Use relative import to fix the ImportError
+from .command import speak 
 import pywhatkit as kit
 
 @eel.expose
 def playAssistantSound():
     try:
         pygame.mixer.init()
-        # Adjusted path to be safer and relative to the current file
         audio_path = os.path.join(os.path.dirname(__file__), "..", "www", "assets", "audio", "start_sound.mp3")
         pygame.mixer.music.load(audio_path)
         pygame.mixer.music.play()
@@ -21,14 +22,12 @@ def playAssistantSound():
     except Exception as e:
         print(f"Error playing assistant sound: {e}")
         try:
-            # Fallback for Mac (afplay) is a good idea
             os.system('afplay /System/Library/Sounds/Glass.aiff')
         except:
             pass
 
 def openCommand(query):
-    # This line might cause an error if ASSISTANT_NAME is not properly imported/set
-    query = query.replace(ASSISTANT_NAME, "") 
+    query = query.replace(ASSISTANT_NAME, "")
     query = query.replace("open", "")
     query = query.strip().lower()
 
@@ -45,14 +44,13 @@ def openCommand(query):
 
     app_name = APP_ALIASES.get(query, query)
     print(f"User query: \"{query}\"")
-    print(f"Mapped app name: \"{app_name}\"")
+    eel.DisplayMessage(f"Mapped app name: \"{app_name}\"")
 
     try:
         message = f"Opening {app_name}"
         eel.DisplayMessage(message)
         speak(message)
-        # Note: 'open -a' is a macOS command. This will fail on Windows/Linux.
-        exit_code = os.system(f'open -a "{app_name}"') 
+        exit_code = os.system(f'open -a "{app_name}"')
         print(f"Open command exit code: {exit_code}")
         if exit_code != 0:
             raise Exception(f"Failed to open {app_name}, exit code {exit_code}")

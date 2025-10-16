@@ -8,20 +8,64 @@ import time
 import os
 import datetime # Import for time/date features
 
+# NOTE: Using the API key provided by the user for demonstration.
+# In a real environment, this should be kept secure.
+GEMINI_API_KEY = "AIzaSyAoE9iIeJc09x-Ul2xInVBoNrCPiikiVbs"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
+
 # ✅ Initialize engine globally
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 
-# Try to set a specific voice, fallback to first available if index doesn't exist
-try:
-    if len(voices) > 14:
-        engine.setProperty('voice', voices[14].id)
-    else:
-        engine.setProperty('voice', voices[0].id)
-except Exception:
-    # If voice setting fails, use the first available voice
-    if voices:
-        engine.setProperty('voice', voices[0].id)
+# --- VOICE CUSTOMIZATION START (Guaranteed Female Voice) ---
+def set_sweet_girl_voice(engine, voices):
+    """
+    Selects the first available voice explicitly marked as female.
+    """
+    selected_voice_id = None
+    
+    # 1. Search for ANY voice explicitly marked as Female, prioritizing English speakers
+    
+    # Prioritized English female voices
+    english_female_ids = []
+    
+    for voice in voices:
+        # Check if the gender is explicitly female
+        is_female = voice.gender == ['VoiceGenderFemale']
+        
+        # Check if it's an English voice (US, AU, GB, etc.)
+        is_english = voice.name.lower().startswith('en')
+
+        if is_female and is_english:
+            # Found a preferred English female voice
+            selected_voice_id = voice.id
+            print(f"[Voice] Found and set preferred voice: {voice.name} (ID: {voice.id})")
+            break
+        elif is_female:
+            # Collect non-English female voices as a secondary fallback
+            english_female_ids.append(voice.id)
+
+    # 2. Fallback to any collected female voice if no English one was selected
+    if not selected_voice_id and english_female_ids:
+        selected_voice_id = english_female_ids[0]
+        print(f"[Voice] Falling back to the first non-English female voice.")
+    
+    # 3. Final Fallback (if no female voice was found at all)
+    if not selected_voice_id and voices:
+        selected_voice_id = voices[0].id
+        print(f"[Voice] Warning: No explicit female voice found. Falling back to default: {voices[0].name}")
+
+    # 4. Apply the voice ID
+    if selected_voice_id:
+        try:
+            engine.setProperty('voice', selected_voice_id)
+        except Exception as e:
+            print(f"[Voice Error] Failed to set voice property: {e}")
+            if voices:
+                engine.setProperty('voice', voices[0].id) 
+
+set_sweet_girl_voice(engine, voices)
+# --- VOICE CUSTOMIZATION END ---
 
 engine.setProperty('rate', 180)
 engine.setProperty('volume', 1.0)
@@ -41,45 +85,84 @@ def safe_eel_call(func_name, *args):
     except Exception as e:
         print(f"Eel call failed for {func_name}: {e}")
 
+# --- GEMINI API INTEGRATION START ---
+def get_gemini_response(user_query):
+    """Fetches a friendly, conversational response from the Gemini API."""
+    
+    system_prompt = (
+        "You are a friendly, concise, and helpful virtual assistant named JARVIS. "
+        "Keep your responses short, conversational, and avoid sounding too formal. "
+        "If the user asks a question, answer it directly and warmly."
+    )
+    
+    payload = {
+        "contents": [{"parts": [{"text": user_query}]}],
+        "tools": [{"google_search": {}}],
+        "systemInstruction": {"parts": [{"text": system_prompt}]}
+    }
+
+    try:
+        import requests
+        headers = {'Content-Type': 'application/json'}
+        
+        # Use a short timeout for responsiveness
+        response = requests.post(
+            f"{GEMINI_API_URL}?key={GEMINI_API_KEY}", 
+            json=payload, 
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status() # Raise exception for bad status codes
+        
+        data = response.json()
+        
+        # Extract the text from the response
+        text = data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "")
+        
+        if text:
+            return text.strip()
+        else:
+            return "I contacted my AI core, but it didn't give me a clear answer right now. Sorry!"
+
+    except requests.exceptions.Timeout:
+        return "I'm having trouble reaching the network right now. Maybe try again in a moment?"
+    except requests.exceptions.RequestException as e:
+        print(f"Gemini API Request Error: {e}")
+        return "Oops, I ran into an error trying to process that request."
+    except Exception as e:
+        print(f"General AI Error: {e}")
+        return "I'm experiencing a minor system hiccup. Can you try phrasing that differently?"
+# --- GEMINI API INTEGRATION END ---
+
+
 @eel.expose
 def takecommand():
     fs = 16000
-    seconds = 4 # Reduced time to 4 seconds for a quicker cycle
+    seconds = 4 # Time to record the command
     r = sr.Recognizer()
+    output_filename = 'output.wav'
     
-    # 🌟 FIX: Use the Microphone as the source for immediate calibration 
-    # and then capture, which is more reliable than writing to file first.
-    # However, since you are using sounddevice/wav for recording, we'll 
-    # stick to that but use the Recognizer's file processing.
-
+    # 🌟 FIX: Use manual threshold for better reliability, especially on macOS
+    r.energy_threshold = 200 
+    
     try:
         # Step 1: Record the audio to a file
         print("Recording...")
         safe_eel_call("DisplayMessage", "Listening...")
 
-        # NOTE: You MUST speak *after* this message appears.
-        # For better UX, you might want to record a moment of silence first 
-        # for adjustment, but we'll try to rely on the Recognizer's internal 
-        # energy threshold for now to keep the flow simple.
-        
         myrecording = sd.rec(int(seconds * fs), samplerate=fs, channels=1, dtype='int16')
         sd.wait()
-        wav.write('output.wav', fs, myrecording)
+        wav.write(output_filename, fs, myrecording)
         print("Recording finished.")
 
         # Step 2: Recognize the audio from the file
-        with sr.AudioFile('output.wav') as source:
-            # 🌟 IMPORTANT FIX: Adjust for ambient noise using the *recorded* file
-            # This helps set the noise floor correctly.
-            r.adjust_for_ambient_noise(source, duration=0.5) 
-            # source.seek(0) # Rewind to the start of the file after adjustment
-            
-            audio = r.record(source)
+        with sr.AudioFile(output_filename) as source:
+            audio = r.record(source) 
 
         print("Recognizing...")
         safe_eel_call("DisplayMessage", "Recognizing...")
         
-        # NOTE: You can also try a longer timeout for the API call if it's slow
+        # Recognize using Google API
         query = r.recognize_google(audio, language='en-in') 
         
         print("User said:", query)
@@ -109,8 +192,8 @@ def takecommand():
         return ""
     finally:
         # Ensure the recorded file is cleaned up after use
-        if os.path.exists('output.wav'):
-            os.remove('output.wav')
+        if os.path.exists(output_filename):
+            os.remove(output_filename)
 
 
 def processCommand(query):
@@ -157,12 +240,17 @@ def processCommand(query):
         safe_eel_call("showHood")
 
     else:
-        response = "I don't understand that command"
-        print(response)
-        safe_eel_call("DisplayMessage", response)
-        speak(response)
+        # 🌟 NEW AI CONVERSATION: Send unknown commands to Gemini
+        print("Sending query to AI...")
+        safe_eel_call("DisplayMessage", "Thinking...")
+        ai_response = get_gemini_response(query)
+        
+        print("AI Response:", ai_response)
+        safe_eel_call("DisplayMessage", ai_response)
+        speak(ai_response)
         time.sleep(1)
         safe_eel_call("showHood")
+
 
 @eel.expose
 def allCommands(query=""):
