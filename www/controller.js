@@ -4,6 +4,9 @@ function DisplayMessage(message) {
     console.log("From Python:", message);
     $(".siri-message").text(message);
     
+    // Stop any current animation to prevent conflicts
+    $('.siri-message').textillate('stop'); 
+
     $('.siri-message').textillate({
         in: { effect: 'fadeInUp', sync: true },
         out: { effect: 'fadeOutUp', sync: true },
@@ -28,6 +31,11 @@ $("#MicBtn").click(function () {
     const micSound = document.getElementById("micSound");
     if (micSound) micSound.play();
 
+    // Notify Python to play the assistant sound and start listening
+    if (typeof eel !== "undefined" && typeof eel.playAssistantSound === "function") {
+      eel.playAssistantSound();
+    }
+
     $("#Oval").hide();
     $("#SiriWave").show();
     $("#siriwave").empty();
@@ -42,5 +50,6 @@ $("#MicBtn").click(function () {
         autostart: true,
     });
 
+    // Call the Python function that handles recording and recognition
     eel.takecommand()();
 });

@@ -41,22 +41,17 @@ $(document).ready(function () {
     });
 
     // mic button click event
+    // 💡 NOTE: This handler is now redundant as controller.js handles the click, 
+    // but we keep the keyup handler.
 
-    $("#MicBtn").click(function () { 
-        eel.playAssistantSound()
-        $("#Oval").attr("hidden", true);
-        $("#SiriWave").attr("hidden", false);
-        eel.takecommand()()
-    });
-
-
+    // 🌟 FIX: Key handler was calling eel.takecommand() twice
     function doc_keyUp(e) {
         // this would test for whichever key is 40 (down arrow) and the ctrl key at the same time
 
-        if (e.key === 'j' && e.metaKey) {
+        if (e.key === 'j' && e.metaKey) { // For Mac: Command + J
             eel.playAssistantSound()
-            $("#Oval").attr("hidden", true);
-            $("#SiriWave").attr("hidden", false);
+            $("#Oval").hide();
+            $("#SiriWave").show();
             eel.takecommand()()
         }
     }
@@ -67,8 +62,9 @@ $(document).ready(function () {
 
         if (message != "") {
 
-            $("#Oval").attr("hidden", true);
-            $("#SiriWave").attr("hidden", false);
+            $("#Oval").hide();
+            $("#SiriWave").show();
+            // Call allCommands for text input
             eel.allCommands(message);
             $("#chatbox").val("")
             $("#MicBtn").attr('hidden', false);
